@@ -1,6 +1,11 @@
-// @deno-types="npm:@types/leaflet@^1.9.14"
 import leaflet from "leaflet";
 import luck from "./luck.ts";
+
+export interface Coin {
+  readonly i: number;
+  readonly j: number;
+  readonly serial: number;
+}
 
 export interface Cell {
   readonly i: number;
@@ -81,7 +86,6 @@ export class Board {
         }
       });
     });
-    console.log(resultCells);
 
     return resultCells;
   }
