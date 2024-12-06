@@ -3,17 +3,7 @@ import "leaflet/dist/leaflet.css";
 import "./style.css";
 import "./leafletWorkaround.ts";
 import luck from "./luck.ts";
-
-const app = document.querySelector<HTMLDivElement>("#app")!;
-
-const button = document.createElement("button");
-button.innerHTML = "click me!";
-
-button.addEventListener("click", () => {
-  alert("You clicked the button!");
-});
-
-app.append(button);
+import { Board, Cell } from "./board.ts";
 
 // Location of our classroom
 const playerLocation = leaflet.latLng(36.98949379578401, -122.06277128548504);
@@ -28,8 +18,6 @@ const CACHE_SPAWN_PROBABILITY = 0.1;
 const map = leaflet.map(document.getElementById("map")!, {
   center: playerLocation,
   zoom: GAMEPLAY_ZOOM_LEVEL,
-  // minZoom: GAMEPLAY_ZOOM_LEVEL,
-  // maxZoom: GAMEPLAY_ZOOM_LEVEL,
   zoomControl: false,
   scrollWheelZoom: false,
 });
@@ -53,26 +41,29 @@ let playerCoins = 0;
 const statusPanel = document.querySelector<HTMLDivElement>("#statusPanel")!; // element `statusPanel` is defined in index.html
 statusPanel.innerHTML = `You have ${playerCoins} coins.`;
 
+// Create a Board
+const board = new Board(
+  TILE_DEGREES, // tileWidth
+  NEIGHBORHOOD_SIZE, // tileVisibilityRadius
+  CACHE_SPAWN_PROBABILITY, // cacheSpawnProb
+);
+
 // Add caches to the map by cell numbers
-function spawnCache(i: number, j: number) {
-  const origin = playerLocation;
-  const bounds = leaflet.latLngBounds([
-    [origin.lat + i * TILE_DEGREES, origin.lng + j * TILE_DEGREES],
-    [origin.lat + (i + 1) * TILE_DEGREES, origin.lng + (j + 1) * TILE_DEGREES],
-  ]);
+function spawnCache(cell: Cell) {
+  const bounds = board.getCellBounds(cell);
 
   // Add a rectangle to the map to represent the cache
   const rect = leaflet.rectangle(bounds).addTo(map);
 
   // Each cache has a random point value
-  let coinValue = Math.floor(luck(`${i},${j}, coins`) * 10) + 1;
+  let coinValue = Math.floor(luck(`${cell.i},${cell.j}, coins`) * 10) + 1;
 
   // Handle interactions with the cache
   rect.bindPopup(() => {
     // The popup offers a description and button
     const popupDiv = document.createElement("div");
     popupDiv.innerHTML = `
-      <div>Cache at (${i}, ${j}) contains <span id="coin-count">${coinValue}</span> coins.</div>
+      <div>Cache at (${cell.i}, ${cell.j}) contains <span id="coin-count">${coinValue}</span> coins.</div>
       <button id="collect">Collect</button>
       <button id="deposit">Deposit</button>
     `;
@@ -107,10 +98,8 @@ function spawnCache(i: number, j: number) {
 }
 
 // Look around the player's neighborhood for caches to spawn
-for (let i = -NEIGHBORHOOD_SIZE; i <= NEIGHBORHOOD_SIZE; i++) {
-  for (let j = -NEIGHBORHOOD_SIZE; j <= NEIGHBORHOOD_SIZE; j++) {
-    if (luck(`${i},${j}`) < CACHE_SPAWN_PROBABILITY) {
-      spawnCache(i, j);
-    }
-  }
-}
+const cellsNearPlayer = board.getCellsNearPoint(playerLocation);
+
+cellsNearPlayer.forEach((cell) => {
+  spawnCache(cell);
+});
